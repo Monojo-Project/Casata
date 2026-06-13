@@ -248,5 +248,5 @@ Tienda central de aplicaciones Monojo
 
 👤 Autor
 
-David Baña Szymaniak
-Proyecto LyndsOS / Monojo Project
+David Baña Szymaniak,
+LYNDS Project
