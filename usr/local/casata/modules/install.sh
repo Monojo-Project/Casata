@@ -1,5 +1,5 @@
 #!/bin/bash
-# /usr/local/casata/modules/install.sh - soporte para múltiples paquetes
+# /usr/local/casata/modules/install.sh - soporte para múltiples paquetes y actualización de Casata con versión
 
 shopt -s nullglob
 set -euo pipefail
@@ -291,32 +291,77 @@ if [ ${#PACKAGES[@]} -eq 0 ]; then
     exit 1
 fi
 
-# Auto-actualización de Casata (solo si el primer paquete es "casata" y no hay más)
+# --- ACTUALIZACIÓN DE CASATA (solo si el primer paquete es "casata" y no hay otros) ---
 if [ ${#PACKAGES[@]} -eq 1 ] && [ "${PACKAGES[0]}" == "casata" ]; then
     echo -e "${GREEN}════════════════════════════════════════${NC}"
     echo -e "${GREEN}Actualizando Casata${NC}"
     echo -e "${GREEN}════════════════════════════════════════${NC}"
     [ "$EUID" -ne 0 ] && { echo -e "${RED}Requiere root.${NC}"; exit 1; }
+
+    # Obtener versión local
+    LOCAL_VERSION="desconocida"
+    if [ -f "$GLOBAL_ROOT/VERSION" ]; then
+        LOCAL_VERSION=$(cat "$GLOBAL_ROOT/VERSION")
+    fi
+
+    # Obtener versión remota desde GitHub
+    REMOTE_VERSION="desconocida"
+    REMOTE_URL="https://raw.githubusercontent.com/Monojo-Project/Casata/main/usr/local/casata/VERSION"
+    echo -e "${YELLOW}Consultando versión remota...${NC}"
+    if wget -q --timeout=10 -O /tmp/casata_remote_version "$REMOTE_URL" 2>/dev/null; then
+        REMOTE_VERSION=$(cat /tmp/casata_remote_version 2>/dev/null | tr -d '[:space:]')
+        rm -f /tmp/casata_remote_version
+    fi
+
+    echo -e "${YELLOW}Versión local:  $LOCAL_VERSION${NC}"
+    echo -e "${YELLOW}Versión remota: $REMOTE_VERSION${NC}"
+
+    # Comparar versiones (si están disponibles)
+    if [ "$LOCAL_VERSION" != "desconocida" ] && [ "$REMOTE_VERSION" != "desconocida" ]; then
+        if [ "$LOCAL_VERSION" = "$REMOTE_VERSION" ]; then
+            echo -e "${GREEN}Ya tienes la última versión.${NC}"
+            if [ $AUTO_YES -eq 0 ]; then
+                read -p "¿Reinstalar igualmente? [s/N] " resp < /dev/tty
+                [[ ! "$resp" =~ ^[sSyY] ]] && exit 0
+            else
+                echo -e "${YELLOW}Usando -y: se reinstalará.${NC}"
+            fi
+        else
+            echo -e "${GREEN}Hay una actualización disponible ($REMOTE_VERSION).${NC}"
+        fi
+    fi
+
     if [ $AUTO_YES -eq 0 ]; then
-        read -p "¿Descargar última versión? [S/n] " resp < /dev/tty
+        read -p "¿Descargar e instalar la última versión? [S/n] " resp < /dev/tty
         [[ "$resp" =~ ^[Nn] ]] && exit 0
     fi
+
     TEMP_DIR=$(mktemp -d)
     ZIP_URL="https://github.com/Monojo-Project/Casata/archive/refs/heads/main.zip"
-    wget -q --show-progress -O "$TEMP_DIR/casata.zip" "$ZIP_URL" || exit 1
+    echo -e "${YELLOW}Descargando desde GitHub...${NC}"
+    if ! wget -q --show-progress -O "$TEMP_DIR/casata.zip" "$ZIP_URL"; then
+        echo -e "${RED}Error al descargar la actualización.${NC}"
+        exit 1
+    fi
     unzip -q "$TEMP_DIR/casata.zip" -d "$TEMP_DIR"
     EXTRACTED=$(find "$TEMP_DIR" -maxdepth 1 -type d -name "Casata-*" | head -1)
+    if [ -z "$EXTRACTED" ] || [ ! -d "$EXTRACTED/usr" ]; then
+        echo -e "${RED}Error: Estructura del ZIP inválida.${NC}"
+        exit 1
+    fi
+
     cp -f "$EXTRACTED/usr/bin/casata" /usr/bin/casata
     chmod +x /usr/bin/casata
     rm -rf "$GLOBAL_ROOT/modules"
     cp -r "$EXTRACTED/usr/local/casata/modules" "$GLOBAL_ROOT/"
     chmod +x "$GLOBAL_ROOT"/modules/*.sh
     cp -f "$EXTRACTED/usr/local/casata/"{HELP,VERSION,WELCOME} "$GLOBAL_ROOT/" 2>/dev/null
-    echo -e "${GREEN}Casata actualizado.${NC}"
+
+    echo -e "${GREEN}Casata actualizado correctamente a la versión $REMOTE_VERSION.${NC}"
     exit 0
 fi
 
-# Instalación normal de múltiples paquetes
+# --- INSTALACIÓN NORMAL DE MÚLTIPLES PAQUETES ---
 FAILED=()
 for PKG in "${PACKAGES[@]}"; do
     echo -e "\n${GREEN}========================================${NC}"
