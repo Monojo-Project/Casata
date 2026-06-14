@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # ==========================================
-# Gestor de Paquetes Casata - Core Router
+# Gestor de Paquetes Casata
+# Desarrollado por David Baña Szymaniak para LyndsOS
+# Licencia GPL v3
 # ==========================================
 
 GREEN='\033[0;32m'
@@ -50,6 +52,7 @@ case "$COMMAND" in
     agregar|añadir|add) COMMAND="add" ;;
     show|mostrar|ver) COMMAND="show" ;;
     buscar|search) COMMAND="search" ;;
+    listar|list) COMMAND="list" ;;
     informacion|info) COMMAND="info" ;;
     --version|-v) COMMAND="--version" ;;
     --help|--h|-h|ayuda|--ayuda|help|--help|-ayuda) COMMAND="--help" ;;
@@ -103,6 +106,10 @@ case "$COMMAND" in
 
     show)
         run_module "show.sh" "$1"
+        ;;
+
+    list)
+        run_module "list.sh" "$1"
         ;;
 
     --version)
