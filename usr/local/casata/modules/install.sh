@@ -88,7 +88,7 @@ fi
 
 # Mostrar y validar dependencias
 if [ ! -z "$PKG_DEPENDENCIES" ]; then
-    echo -e "\n${YELLOW}Dependencias a instalar:${NC}"
+    echo -e "\n${YELLOW}Dependencias requeridas:${NC}"
     echo "$PKG_DEPENDENCIES" | while read -r dep; do
         echo -e "  • $dep"
     done
@@ -109,26 +109,51 @@ fi
 
 echo -e "${GREEN}Preparando instalación de $PKG_NAME...${NC}"
 
-# Instalar dependencias del sistema
+# --- GESTIÓN DE DEPENDENCIAS ---
 if [ ! -z "$PKG_DEPENDENCIES" ]; then
-    echo -e "\n${YELLOW}Instalando dependencias del sistema...${NC}"
-
     DEPS_STRING=$(echo "$PKG_DEPENDENCIES" | tr '\n' ' ')
 
     if [ $USER_INSTALL -eq 1 ]; then
-        echo -e "${YELLOW}Nota: Usuario no-root detectado. Usando sudo para instalar dependencias.${NC}"
-        sudo apt-get update -qq && sudo apt-get install -y $DEPS_STRING
-    else
-        apt-get update -qq && apt-get install -y $DEPS_STRING
-    fi
+        # MODO USUARIO: Solo escanea, no instala con APT
+        echo -e "\n${YELLOW}Comprobando dependencias locales...${NC}"
+        MISSING_DEPS=""
 
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Error: Falló la instalación de dependencias.${NC}"
-        exit 1
+        for dep in $PKG_DEPENDENCIES; do
+            # dpkg -s es muy rápido para verificar si está instalado en sistemas de 64 bits/Debian
+            if ! dpkg -s "$dep" >/dev/null 2>&1; then
+                MISSING_DEPS="$MISSING_DEPS $dep"
+            fi
+        done
+
+        if [ ! -z "$MISSING_DEPS" ]; then
+            MISSING_DEPS=$(echo "$MISSING_DEPS" | xargs) # Limpia espacios extra
+            echo -e "${RED}Faltan dependencias en el sistema.${NC}"
+            read -p "¿Instalar la aplicación aunque no funcione por la falta de las dependencias: $MISSING_DEPS? [s/y/N] " resp_deps
+
+            # Acepta 's', 'S', 'y' o 'Y'
+            if [[ ! "$resp_deps" =~ ^([sSyY])$ ]]; then
+                echo "Instalación abortada por el usuario."
+                exit 0
+            fi
+            echo -e "${YELLOW}Continuando instalación sin las dependencias recomendadas...${NC}\n"
+        else
+            echo -e "${GREEN}✓ Todas las dependencias están cubiertas.${NC}\n"
+        fi
+
+    else
+        # MODO ROOT / GLOBAL: Ejecución directa y rápida sin escaneo previo
+        echo -e "\n${YELLOW}Instalando dependencias del sistema...${NC}"
+
+        apt update && apt install -y $DEPS_STRING
+
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Error: Falló la instalación de dependencias.${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✓ Dependencias instaladas correctamente.${NC}\n"
     fi
-    echo -e "${GREEN}✓ Dependencias instaladas correctamente.${NC}\n"
 else
-    echo -e "${YELLOW}No hay dependencias que instalar.${NC}\n"
+    echo -e "${YELLOW}No hay dependencias que gestionar.${NC}\n"
 fi
 
 # --- DESCARGA Y EXTRACCIÓN ---
@@ -185,7 +210,6 @@ echo " -> Configurando enlaces (seguridad activa)..."
 GUIDE_FILE="$APP_DIR/$GUIDE_TARGET"
 
 if [ -f "$GUIDE_FILE" ]; then
-    # Solucionado el problema del Subshell para que exit 1 funcione correctamente
     while read -r item; do
         FILE=$(echo "$item" | jq -r '.file')
         DEST=$(echo "$item" | jq -r '.dest')
