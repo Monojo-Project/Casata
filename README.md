@@ -50,12 +50,13 @@ Modo usuario:
 
 Una aplicación Casata es una carpeta simple con los siguientes elementos:
 
+```
 mc-lan/
 ├── main.py
 ├── icon.png
 ├── mc-lan.desktop
 └── GUIDE.json
-
+```
 
 ---
 
@@ -89,14 +90,17 @@ Define cómo se integra la aplicación en el sistema:
 
 ⚙️ Instalación de Casata
 
-Instalación global
+Instalación global:
+```
 
 sudo casata install mc-lan
+```
 
-Instalación de usuario
+Instalación de usuario:
+```
 
 casata install --user mc-lan
-
+```
 
 ---
 
