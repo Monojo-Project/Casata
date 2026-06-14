@@ -23,9 +23,9 @@ require_root() {
 
 run_module() {
     local module_script="$MODULES_DIR/$1"
-    shift 
+    shift
     if [ -x "$module_script" ]; then
-        export GREEN RED NC 
+        export GREEN RED NC
         exec "$module_script" "$@"
     else
         echo -e "${RED}Error: El módulo $1 no existe o no es ejecutable.${NC}"
@@ -59,44 +59,37 @@ case "$COMMAND" in
     --help)
         [ -f "$HELP_FILE" ] && cat "$HELP_FILE" || echo "Ayuda no disponible."
         ;;
-        
+
     search)
         [ -z "$1" ] && { echo -e "${RED}Error: Falta texto de búsqueda.${NC}"; exit 1; }
-        run_module "search.sh" "$@" # Cambiado "$1" por "$@"
+        run_module "search.sh" "$@"
         ;;
 
     info)
         [ -z "$1" ] && { echo -e "${RED}Error: Falta el nombre del paquete.${NC}"; exit 1; }
-        run_module "info.sh" "$@" # Cambiado "$1" por "$@"
+        run_module "info.sh" "$@"
         ;;
-        
+
     install)
         [ -z "$1" ] && { echo -e "${RED}Error: Faltan argumentos.${NC}"; exit 1; }
         run_module "install.sh" "$@"
         ;;
-        
+
     remove)
-        if [ "$1" == "--user" ]; then
-            [ -z "$2" ] && { echo "Error: Falta el paquete."; exit 1; }
-            run_module "remove-user.sh" "$2"
-        else
-            require_root
-            [ -z "$1" ] && { echo "Error: Falta el paquete."; exit 1; }
-            run_module "remove.sh" "$1"
-        fi
+        [ -z "$1" ] && { echo -e "${RED}Error: Faltan argumentos.${NC}"; exit 1; }
+        run_module "remove.sh" "$@" # Delegación completa y limpia a remove.sh
         ;;
-        
+
     update)
         require_root
         run_module "update.sh"
         ;;
-        
+
     upgrade)
-        require_root
         [ -z "$1" ] && { echo "Error: Falta el paquete."; exit 1; }
-        run_module "upgrade.sh" "$1"
+        run_module "upgrade.sh" "$@" # Preparado para recibir flags en el futuro
         ;;
-        
+
     add)
         require_root
         if [[ "$1" == "repo" || "$1" == "singrepo" ]]; then
@@ -112,11 +105,10 @@ case "$COMMAND" in
         run_module "show.sh" "$1"
         ;;
 
-        
     --version)
         [ -f "$VERSION_FILE" ] && cat "$VERSION_FILE" || echo "Versión desconocida."
         ;;
-        
+
     *)
         echo -e "${RED}Comando no reconocido: $COMMAND${NC}"
         exit 1
