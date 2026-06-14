@@ -1,39 +1,76 @@
 #!/bin/bash
-# /usr/local/casata/modules/list.sh - Lista de aplicaciones
+# /usr/local/casata/modules/list.sh
 
 shopt -s nullglob
 
 CASATA_ROOT="/usr/local/casata"
 DATA_DIR="$CASATA_ROOT/data"
+SYS_DIR="$CASATA_ROOT/apps"
+USR_DIR="$HOME/.local/casata/apps"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Valores por defecto
+# Flags
 SHOW_VERSION=0
 SHOW_DESC=0
 
-# Usar getopts para procesar opciones (soporta agrupación: -vd)
-while getopts "vd" opt; do
-    case "$opt" in
-        v) SHOW_VERSION=1 ;;
-        d) SHOW_DESC=1 ;;
-        *)
-            echo -e "${RED}Uso: casata list [-v] [-d]${NC}"
+# Procesar argumentos (si no hay, se queda todo en 0)
+for arg in "$@"; do
+    case "$arg" in
+        -v|--version)
+            SHOW_VERSION=1
+            ;;
+        -d|--description)
+            SHOW_DESC=1
+            ;;
+        -vd|-dv)
+            SHOW_VERSION=1
+            SHOW_DESC=1
+            ;;
+        -*)
+            echo -e "${RED}Opción desconocida: $arg${NC}"
+            echo "Uso: casata list [-v] [-d] [-vd]"
             exit 1
+            ;;
+        *)
+            # Si hay un argumento que no es opción, ignorar (podría ser un nombre, pero no se usa)
             ;;
     esac
 done
 
-# Verificar que existan datos
-if [ ! -d "$DATA_DIR" ] || [ -z "$(ls -A "$DATA_DIR" 2>/dev/null)" ]; then
-    echo -e "${YELLOW}No hay aplicaciones indexadas. Ejecuta 'casata update' primero.${NC}"
+# Recoger aplicaciones instaladas (globales + usuario)
+APPS_LIST=()
+[ -d "$SYS_DIR" ] && for app in "$SYS_DIR"/*; do
+    [ -d "$app" ] && APPS_LIST+=("$(basename "$app")")
+done
+[ -d "$USR_DIR" ] && for app in "$USR_DIR"/*; do
+    [ -d "$app" ] && APPS_LIST+=("$(basename "$app")")
+done
+
+# Eliminar duplicados
+if [ ${#APPS_LIST[@]} -gt 0 ]; then
+    APPS_LIST=($(printf "%s\n" "${APPS_LIST[@]}" | sort -u))
+fi
+
+if [ ${#APPS_LIST[@]} -eq 0 ]; then
+    echo -e "${YELLOW}No hay aplicaciones instaladas.${NC}"
     exit 0
 fi
 
-# Mostrar cabecera según opciones
+# --- Sin opciones: solo nombres ---
+if [ $SHOW_VERSION -eq 0 ] && [ $SHOW_DESC -eq 0 ]; then
+    echo -e "${GREEN}Aplicaciones instaladas:${NC}"
+    for PKG_NAME in "${APPS_LIST[@]}"; do
+        echo "  $PKG_NAME"
+    done
+    echo -e "\n${YELLOW}Total: ${#APPS_LIST[@]} aplicaciones instaladas.${NC}"
+    exit 0
+fi
+
+# --- Con opciones: mostrar tabla ---
 if [ $SHOW_VERSION -eq 1 ] && [ $SHOW_DESC -eq 1 ]; then
     printf "${GREEN}%-30s %-15s %s${NC}\n" "NOMBRE" "VERSIÓN" "DESCRIPCIÓN"
     echo "----------------------------------------------------------------------"
@@ -43,28 +80,34 @@ elif [ $SHOW_VERSION -eq 1 ]; then
 elif [ $SHOW_DESC -eq 1 ]; then
     printf "${GREEN}%-30s %s${NC}\n" "NOMBRE" "DESCRIPCIÓN"
     echo "--------------------------------------------------------------"
-else
-    echo -e "${GREEN}Aplicaciones disponibles:${NC}"
 fi
 
-# Listar aplicaciones
-for DB_FILE in "$DATA_DIR"/*.json; do
-    [ -f "$DB_FILE" ] || continue
-    NAME=$(jq -r '.name // "sin_nombre"' "$DB_FILE")
-    VERSION=$(jq -r '.version // "desconocida"' "$DB_FILE")
-    DESC=$(jq -r '.description // ""' "$DB_FILE")
+for PKG_NAME in "${APPS_LIST[@]}"; do
+    # Obtener versión si se pide
+    VERSION=""
+    if [ $SHOW_VERSION -eq 1 ]; then
+        if [ -d "$SYS_DIR/$PKG_NAME" ] && [ -f "$SYS_DIR/$PKG_NAME/VERSION" ]; then
+            VERSION=$(cat "$SYS_DIR/$PKG_NAME/VERSION")
+        elif [ -d "$USR_DIR/$PKG_NAME" ] && [ -f "$USR_DIR/$PKG_NAME/VERSION" ]; then
+            VERSION=$(cat "$USR_DIR/$PKG_NAME/VERSION")
+        else
+            VERSION="desconocida"
+        fi
+    fi
+
+    # Obtener descripción si se pide
+    DESC=""
+    if [ $SHOW_DESC -eq 1 ] && [ -f "$DATA_DIR/${PKG_NAME}.json" ] && [ -r "$DATA_DIR/${PKG_NAME}.json" ]; then
+        DESC=$(jq -r '.description // ""' "$DATA_DIR/${PKG_NAME}.json" 2>/dev/null)
+    fi
 
     if [ $SHOW_VERSION -eq 1 ] && [ $SHOW_DESC -eq 1 ]; then
-        printf "%-30s %-15s %s\n" "$NAME" "$VERSION" "$DESC"
+        printf "%-30s %-15s %s\n" "$PKG_NAME" "$VERSION" "$DESC"
     elif [ $SHOW_VERSION -eq 1 ]; then
-        printf "%-30s %-15s\n" "$NAME" "$VERSION"
+        printf "%-30s %-15s\n" "$PKG_NAME" "$VERSION"
     elif [ $SHOW_DESC -eq 1 ]; then
-        printf "%-30s %s\n" "$NAME" "$DESC"
-    else
-        echo "  $NAME"
+        printf "%-30s %s\n" "$PKG_NAME" "$DESC"
     fi
 done
 
-# Contador total
-TOTAL=$(ls -1 "$DATA_DIR"/*.json 2>/dev/null | wc -l)
-echo -e "\n${YELLOW}Total: $TOTAL aplicaciones disponibles.${NC}"
+echo -e "\n${YELLOW}Total: ${#APPS_LIST[@]} aplicaciones instaladas.${NC}"
