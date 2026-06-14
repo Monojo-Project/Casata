@@ -1,14 +1,12 @@
-sudo cat << 'EOF' > /usr/local/casata/HELP
 Casata Package Manager
 Uso: casata <comando> [opciones] [argumentos]
 
 Comandos disponibles:
-  install [--user] <paquete>   Instala un paquete (global requiere root)
-  remove [--user] <paquete>    Elimina un paquete (global requiere root)
-  update                       Actualiza listas de repositorios (requiere root)
-  upgrade <paquete>            Actualiza un paquete (requiere root)
-  add repo <enlace>            Añade un repositorio estándar (requiere root)
-  add singrepo <enlace>        Añade un singrepo (requiere root)
-  --version, -v                Muestra la versión de casata
+  install [--user] <paquete>   Instala un paquete (global requiere sudo)
+  remove [--user] <paquete>    Elimina un paquete (global requiere sudo)
+  update                       Actualiza listas de repositorios (requiere sudo)
+  upgrade <paquete>            Actualiza un paquete (requiere sudo)
+  add repo <enlace>            Añade un meta repositorio (requiere sudo)
+  add singrepo <enlace>        Añade un singrepo (requiere sudo)
+  --version, -v                Muestra la versión de Casata
   --help, --h, -h              Muestra este mensaje de ayuda
-EOF
