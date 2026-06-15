@@ -76,14 +76,17 @@ ask_overwrite() {
     local target="$1"
     local app_name="$2"
     echo -e "${YELLOW}Advertencia: '$target' ya existe y no es un enlace a $app_name.${NC}"
-    read -p "¿Sobrescribirlo? (perderás el archivo original) [s/N]: " resp < /dev/tty
+    read -p "¿Sobrescribirlo? (perderás el archivo original) [s/N/a (abortar)]: " resp < /dev/tty
     if [[ "$resp" =~ ^[sSyY] ]]; then
         rm -rf "$target"
         echo -e "${GREEN}Archivo eliminado. Continuando...${NC}"
         return 0
-    else
-        echo -e "${RED}Instalación abortada por seguridad.${NC}"
+    elif [[ "$resp" =~ ^[aA] ]]; then
+        echo -e "${RED}Instalación abortada por el usuario.${NC}"
         exit 1
+    else
+        echo -e "${YELLOW}Omitiendo enlace. No se sobrescribirá.${NC}"
+        return 1
     fi
 }
 
@@ -241,7 +244,7 @@ install_one() {
                     echo -e "   ${YELLOW}[!] Enlace existente de la misma app: $LINK_NAME → se reemplazará.${NC}"
                     rm -f "$TARGET_LINK"
                 else
-                    ask_overwrite "$TARGET_LINK" "$PKG_NAME"
+                    ask_overwrite "$TARGET_LINK" "$PKG_NAME" || continue
                 fi
             fi
 
