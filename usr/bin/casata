@@ -3,7 +3,7 @@
 # ==========================================
 # Gestor de Aplicaciones Casata
 # Desarrollado por David Baña Szymaniak para LyndsOS
-# Licencia GPL v3
+# Licencia GPL v3, Software Aros Legendarios, David Baña Szymaniak
 # ==========================================
 
 GREEN='\033[0;32m'
@@ -12,6 +12,10 @@ NC='\033[0m'
 
 CASATA_ROOT="/usr/local/casata"
 MODULES_DIR="$CASATA_ROOT/modules"
+
+# Asegurar que todos los módulos sean ejecutables (silenciosamente si no hay archivos)
+[ -d "$MODULES_DIR" ] && chmod +x "$MODULES_DIR"/* 2>/dev/null
+
 VERSION_FILE="$CASATA_ROOT/VERSION"
 HELP_FILE="$CASATA_ROOT/HELP"
 WELCOME_FILE="$CASATA_ROOT/WELCOME"
@@ -80,7 +84,7 @@ case "$COMMAND" in
 
     remove)
         [ -z "$1" ] && { echo -e "${RED}Error: Faltan argumentos.${NC}"; exit 1; }
-        run_module "remove.sh" "$@" # Delegación completa y limpia a remove.sh
+        run_module "remove.sh" "$@"
         ;;
 
     update)
@@ -90,7 +94,7 @@ case "$COMMAND" in
 
     upgrade)
         [ -z "$1" ] && { echo "Error: Falta el paquete."; exit 1; }
-        run_module "upgrade.sh" "$@" # Preparado para recibir flags en el futuro
+        run_module "upgrade.sh" "$@"
         ;;
 
     add)
