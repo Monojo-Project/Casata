@@ -13,7 +13,7 @@ NC='\033[0m'
 CASATA_ROOT="/usr/local/casata"
 MODULES_DIR="$CASATA_ROOT/modules"
 
-# Asegurar que todos los módulos sean ejecutables (silenciosamente si no hay archivos)
+# Asegurar que todos los módulos sean ejecutables
 [ -d "$MODULES_DIR" ] && chmod +x "$MODULES_DIR"/* 2>/dev/null
 
 VERSION_FILE="$CASATA_ROOT/VERSION"
@@ -39,6 +39,35 @@ run_module() {
     fi
 }
 
+# Función de logging
+log_command() {
+    local cmd="$1"
+    local user="$USER"
+    local log_file=""
+    
+    if [ "$EUID" -eq 0 ]; then
+        log_file="/usr/local/casata/HISTORY.log"
+    else
+        log_file="$HOME/.local/casata/HISTORY.log"
+    fi
+    
+    local no_log_flag=""
+    if [ "$EUID" -eq 0 ]; then
+        no_log_flag="/usr/local/casata/NO_LOG"
+    else
+        no_log_flag="$HOME/.local/casata/NO_LOG"
+    fi
+    
+    # Si el flag de desactivación existe, no registrar
+    if [ -f "$no_log_flag" ]; then
+        return 0
+    fi
+    
+    mkdir -p "$(dirname "$log_file")"
+    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    echo "[$timestamp] $user $cmd" >> "$log_file"
+}
+
 if [ $# -eq 0 ]; then
     [ -f "$WELCOME_FILE" ] && cat "$WELCOME_FILE" || echo "Bienvenido a Casata."
     exit 0
@@ -58,60 +87,77 @@ case "$COMMAND" in
     buscar|search) COMMAND="search" ;;
     listar|list) COMMAND="list" ;;
     informacion|info) COMMAND="info" ;;
+    historial|history) COMMAND="history" ;;
     --version|-v) COMMAND="--version" ;;
     --help|--h|-h|ayuda|--ayuda|help|--help|-ayuda) COMMAND="--help" ;;
 esac
+
+# Guardar el comando completo para el log (después de normalización)
+FULL_COMMAND="$COMMAND $*"
 
 case "$COMMAND" in
     --help)
         [ -f "$HELP_FILE" ] && cat "$HELP_FILE" || echo "Ayuda no disponible."
         ;;
 
+    --version)
+        [ -f "$VERSION_FILE" ] && cat "$VERSION_FILE" || echo "Versión desconocida."
+        ;;
+
+    history)
+        # No registrar el comando history para no llenar el log
+        run_module "history.sh" "$@"
+        ;;
+
     search)
         [ -z "$1" ] && { echo -e "${RED}Error: Falta texto de búsqueda.${NC}"; exit 1; }
+        log_command "$FULL_COMMAND"
         run_module "search.sh" "$@"
         ;;
 
     info)
         [ -z "$1" ] && { echo -e "${RED}Error: Falta el nombre del paquete.${NC}"; exit 1; }
+        log_command "$FULL_COMMAND"
         run_module "info.sh" "$@"
         ;;
 
     install)
         [ -z "$1" ] && { echo -e "${RED}Error: Faltan argumentos.${NC}"; exit 1; }
+        log_command "$FULL_COMMAND"
         run_module "install.sh" "$@"
         ;;
 
     remove)
         [ -z "$1" ] && { echo -e "${RED}Error: Faltan argumentos.${NC}"; exit 1; }
+        log_command "$FULL_COMMAND"
         run_module "remove.sh" "$@"
         ;;
 
     update)
         require_root
+        log_command "$FULL_COMMAND"
         run_module "update.sh"
         ;;
 
     upgrade)
-        # CORREGIDO: ya no exige argumento; todas las opciones se pasan al módulo
+        log_command "$FULL_COMMAND"
         run_module "upgrade.sh" "$@"
         ;;
 
     add)
         require_root
+        log_command "$FULL_COMMAND"
         run_module "add.sh" "$@"
         ;;
 
     show)
+        log_command "$FULL_COMMAND"
         run_module "show.sh" "$1"
         ;;
 
     list)
+        log_command "$FULL_COMMAND"
         run_module "list.sh" "$1"
-        ;;
-
-    --version)
-        [ -f "$VERSION_FILE" ] && cat "$VERSION_FILE" || echo "Versión desconocida."
         ;;
 
     *)
