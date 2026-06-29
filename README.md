@@ -253,4 +253,4 @@ Tienda central de aplicaciones Monojo
 👤 Autor
 
 David Baña Szymaniak,
-LYNDS Project
+Aros Legendarios
