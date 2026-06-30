@@ -26,29 +26,21 @@ cleanup() {
 }
 trap cleanup EXIT
 
-detect_pkg_manager() {
-    if command -v apt &>/dev/null; then echo "apt"
-    elif command -v dnf &>/dev/null; then echo "dnf"
-    elif command -v yum &>/dev/null; then echo "yum"
-    elif command -v pacman &>/dev/null; then echo "pacman"
-    elif command -v zypper &>/dev/null; then echo "zypper"
-    else echo ""; fi
-}
-
 install_system_deps() {
     local deps="$1"
-    local pkg_manager=$(detect_pkg_manager)
-    if [ -z "$pkg_manager" ]; then
-        echo -e "${RED}No se detectó gestor de paquetes. Instale manualmente: $deps${NC}"
-        return 1
+    
+    echo -e "${YELLOW}Intentando instalar dependencias: $deps${NC}"
+    
+    # Si apt existe, intentamos actualizar e instalar
+    if command -v apt &>/dev/null; then
+        if apt update && apt install -y $deps; then
+            return 0
+        fi
     fi
-    echo -e "${YELLOW}Usando $pkg_manager para instalar: $deps${NC}"
-    case "$pkg_manager" in
-        apt) apt update && apt install -y $deps ;;
-        dnf|yum) $pkg_manager install -y $deps ;;
-        pacman) pacman -S --noconfirm $deps ;;
-        zypper) zypper install -y $deps ;;
-    esac
+    
+    # Si llega aquí, es porque apt no existe o falló el comando anterior
+    echo -e "${RED}Error: No se pudieron instalar las dependencias automáticamente con APT. Por favor, instálelas manualmente: $deps${NC}"
+    return 1
 }
 
 force_remove() {
@@ -189,7 +181,7 @@ install_one() {
         if [ $USER_INSTALL -eq 1 ]; then
             MISSING=""
             for dep in $REPO_DEPS; do
-                if ! dpkg -s "$dep" &>/dev/null && ! rpm -q "$dep" &>/dev/null && ! pacman -Q "$dep" &>/dev/null; then
+                if ! dpkg -s "$dep" &>/dev/null; then
                     MISSING="$MISSING $dep"
                 fi
             done
