@@ -67,6 +67,15 @@ force_remove() {
 ask_overwrite() {
     local target="$1"
     local app_name="$2"
+    local auto_yes="$3"
+
+    # Si se pasó -y, saltarse la pregunta y sobrescribir directamente
+    if [ "$auto_yes" -eq 1 ]; then
+        echo -e "${YELLOW}Usando -y: Sobrescribiendo '$target' automáticamente.${NC}"
+        rm -rf "$target"
+        return 0
+    fi
+
     echo -e "${YELLOW}Advertencia: '$target' ya existe y no es un enlace a $app_name.${NC}"
     read -p "¿Sobrescribirlo? (perderás el archivo original) [s/N/a (abortar)]: " resp < /dev/tty
     if [[ "$resp" =~ ^[sSyY] ]]; then
@@ -187,8 +196,12 @@ install_one() {
             done
             if [ -n "$MISSING" ]; then
                 echo -e "${RED}Faltan dependencias: $MISSING${NC}"
-                read -p "¿Continuar sin ellas? [s/N] " resp < /dev/tty
-                [[ ! "$resp" =~ ^[Ss] ]] && return 1
+                if [ $AUTO_YES -eq 0 ]; then
+                    read -p "¿Continuar sin ellas? [s/N] " resp < /dev/tty
+                    [[ ! "$resp" =~ ^[Ss] ]] && return 1
+                else
+                    echo -e "${YELLOW}Usando -y: Continuando la instalación de forma forzada.${NC}"
+                fi
             fi
         fi
     fi
@@ -240,7 +253,7 @@ install_one() {
                     echo -e "   ${YELLOW}[!] Enlace existente de la misma app: $LINK_NAME → se reemplazará.${NC}"
                     rm -f "$TARGET_LINK"
                 else
-                    ask_overwrite "$TARGET_LINK" "$PKG_NAME" || continue
+                    ask_overwrite "$TARGET_LINK" "$PKG_NAME" "$AUTO_YES" || continue
                 fi
             fi
 
