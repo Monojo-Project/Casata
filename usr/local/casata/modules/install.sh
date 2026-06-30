@@ -46,16 +46,20 @@ install_system_deps() {
 force_remove() {
     local app_dir="$1"
     local guide_target="$2"
-    echo -e "${YELLOW}Eliminando instalación anterior...${NC}"
+    echo -e "${YELLOW}Eliminando instalación anterior/revertiendo enlaces...${NC}"
     if [ -f "$app_dir/$guide_target" ]; then
         jq -c '.links[]' "$app_dir/$guide_target" 2>/dev/null | while read -r item; do
             DEST=$(echo "$item" | jq -r '.dest')
             LINK_NAME=$(echo "$item" | jq -r '.name')
-            [ "$DEST" == "null" ] || [ "$LINK_NAME" == "null" ] && continue
+            FILE=$(echo "$item" | jq -r '.file')
+            [ "$DEST" == "null" ] || [ "$LINK_NAME" == "null" ] || [ "$FILE" == "null" ] && continue
+            
             DEST="${DEST/#\~/$HOME}"
             DEST="${DEST//\$HOME/$HOME}"
             TARGET_LINK="$DEST/$LINK_NAME"
-            if [ -L "$TARGET_LINK" ]; then
+            
+            # Solo eliminamos el enlace si apunta a NUESTRA aplicación (evita borrar cosas de otros por error)
+            if [ -L "$TARGET_LINK" ] && [ "$(readlink "$TARGET_LINK")" == "$app_dir/$FILE" ]; then
                 rm -f "$TARGET_LINK"
                 echo -e "   [-] Enlace eliminado: $LINK_NAME"
             fi
@@ -253,7 +257,12 @@ install_one() {
                     echo -e "   ${YELLOW}[!] Enlace existente de la misma app: $LINK_NAME → se reemplazará.${NC}"
                     rm -f "$TARGET_LINK"
                 else
-                    ask_overwrite "$TARGET_LINK" "$PKG_NAME" "$AUTO_YES" || continue
+                    # Si el usuario dice que no, revertimos TODO el paquete y salimos con error
+                    if ! ask_overwrite "$TARGET_LINK" "$PKG_NAME" "$AUTO_YES"; then
+                        echo -e "${RED}Cancelando instalación de $PKG_NAME por conflicto de archivos.${NC}"
+                        force_remove "$APP_DIR" "$GUIDE_TARGET"
+                        return 1
+                    fi
                 fi
             fi
 
