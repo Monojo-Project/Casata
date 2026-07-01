@@ -1,58 +1,41 @@
-═══════════════════════════════════════════════
-                 CASATA HELP
-═══════════════════════════════════════════════
+CASATA - Gestor de paquetes ligero
+==================================
 
-Uso: casata <comando> [opciones] [args]
+COMANDOS (resumen):
 
-Comandos principales:
-  install   Instalar un paquete
-  remove    Desinstalar un paquete
-  update    Actualizar repositorios
-  search    Buscar paquetes
-  info      Mostrar información de un paquete
-  list      Listar aplicaciones disponibles
-  show      Mostrar aplicaciones instaladas
-  clean     Limpiar huérfanos
-  add       Agregar repositorio/singrepo/oficial
-  help      Esta ayuda
+  add singrepo <URL>      → Añade un paquete individual
+  add repo <URL>          → Añade un metarepositorio
+  add oficial             → Usa el repositorio maestro
 
-Opciones comunes:
-  -y        Responder sí automáticamente
-  --user    Instalar/desinstalar solo para el usuario
-  -d        Solo descargar (en install)
-  -d        Mostrar descripción (en list)
-  -v        Mostrar versión (en list)
-  -vd       Mostrar versión + descripción (en list)
+  install <pkg...> [-y] [-d] [--user]
+  remove  <pkg...> [-y] [--user]
 
-Ejemplos:
-  casata list                     # lista nombres
-  casata list -v                  # nombres + versiones
-  casata list -vd                 # nombres + versiones + descripción
-  casata search music
-  casata info mc-lan
-  casata install --user monojo-music
-  sudo casata install mc-lan -y
-  sudo casata remove mc-lan
-  sudo casata update
-  sudo casata add oficial         # sincroniza repositorio oficial
-  sudo casata add repo URL        # agrega un metarepo
-  sudo casata add singrepo URL    # agrega un paquete individual
+  list [-v] [-d]          → Muestra instalados (versión/descripción)
 
-Alias reconocidos:
-  install = instalar
-  remove  = eliminar, remover
-  update  = actualizar
-  add     = agregar, añadir
-  show    = mostrar, ver
-  search  = buscar
-  info    = informacion
-  clean   = limpiar
-  list    = lista, ls
-  help    = ayuda, --help, -h
+  info <pkg> [-l] [-r]    → Datos del paquete (licencia/readme)
 
-Notas:
-  • Los comandos que modifican el sistema requieren sudo (excepto --user).
-  • Primera vez: sudo casata add oficial
-  • Requiere wget y jq instalados.
+  search <texto>          → Busca en la base de datos local
 
-═══════════════════════════════════════════════
+  update                  → Actualiza índices de repositorios
+
+  upgrade [-y] [--user|--system] → Actualiza paquetes instalados
+
+  history [--lines N] [--clear] [--disable|--enable] [--user nom]
+                          → Historial de operaciones
+
+  clean                   → Elimina huérfanos (singrepos/datos no referenciados)
+
+  show                    → Resumen de apps instaladas (sistema + usuario)
+
+OPCIONES COMUNES:
+  -y          → responde "sí" a todo
+  --user      → opera en ámbito de usuario (~/.local/casata)
+  -d          → solo descarga (install)
+  -l / -r     → licencia / readme (info)
+  -v / -d     → versión / descripción (list)
+
+RUTAS:
+  Global: /usr/local/casata/{apps,data,repos}
+  Usuario: ~/.local/casata/apps
+
+Requiere sudo para operaciones globales.
