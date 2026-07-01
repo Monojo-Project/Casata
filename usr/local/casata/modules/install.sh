@@ -257,11 +257,9 @@ install_one() {
                     echo -e "   ${YELLOW}[!] Enlace existente de la misma app: $LINK_NAME → se reemplazará.${NC}"
                     rm -f "$TARGET_LINK"
                 else
-                    # Si el usuario dice que no, revertimos TODO el paquete y salimos con error
+                    # CORRECCIÓN: Si el usuario no desea sobrescribir, omitimos este enlace y continuamos
                     if ! ask_overwrite "$TARGET_LINK" "$PKG_NAME" "$AUTO_YES"; then
-                        echo -e "${RED}Cancelando instalación de $PKG_NAME por conflicto de archivos.${NC}"
-                        force_remove "$APP_DIR" "$GUIDE_TARGET"
-                        return 1
+                        continue
                     fi
                 fi
             fi
